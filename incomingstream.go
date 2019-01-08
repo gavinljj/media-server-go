@@ -1,6 +1,7 @@
 package mediaserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
@@ -133,6 +134,11 @@ func (i *IncomingStream) AddTrack(track *IncomingStreamTrack) error {
 		delete(i.tracks, track.GetID())
 	})
 
+	go func(ctx context.Context, track *IncomingStreamTrack) {
+		<-ctx.Done()
+		delete(i.tracks, track.GetID())
+	}(track.ctx, track)
+
 	i.tracks[track.GetID()] = track
 	return nil
 }
@@ -257,14 +263,20 @@ func (i *IncomingStream) CreateTrack(track *sdp.TrackInfo) *IncomingStreamTrack 
 
 	incomingTrack := newIncomingStreamTrack(track.GetMedia(), track.GetID(), i.receiver, sources)
 
-	incomingTrack.Once("stopped", func() {
+	// incomingTrack.Once("stopped", func() {
+	// 	delete(i.tracks, incomingTrack.GetID())
+	// 	for _, source := range sources {
+	// 		i.transport.RemoveIncomingSourceGroup(source)
+	// 	}
+	// })
 
-		delete(i.tracks, incomingTrack.GetID())
-
+	go func(ctx context.Context, track *IncomingStreamTrack) {
+		<-ctx.Done()
+		delete(i.tracks, track.GetID())
 		for _, source := range sources {
 			i.transport.RemoveIncomingSourceGroup(source)
 		}
-	})
+	}(incomingTrack.ctx, incomingTrack)
 
 	i.tracks[track.GetID()] = incomingTrack
 

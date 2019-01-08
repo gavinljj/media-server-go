@@ -30,20 +30,25 @@ func (p *overwrittenSenderSideEstimatorListener) OnTargetBitrateRequested(bitrat
 	fmt.Println(bitrate)
 }
 
+type IncomingtrackFunc func(*IncomingStreamTrack)
+type OutgoingtrackFunc func(*OutgoingStreamTrack)
+
 // Transport represent a connection between a local ICE candidate and a remote set of ICE candidates over a single DTLS session
 type Transport struct {
-	localIce           *sdp.ICEInfo
-	localDtls          *sdp.DTLSInfo
-	localCandidates    []*sdp.CandidateInfo
-	remoteIce          *sdp.ICEInfo
-	remoteDtls         *sdp.DTLSInfo
-	remoteCandidates   []*sdp.CandidateInfo
-	bundle             native.RTPBundleTransport
-	transport          native.DTLSICETransport
-	username           native.StringFacade
-	incomingStreams    map[string]*IncomingStream
-	outgoingStreams    map[string]*OutgoingStream
-	senderSideListener senderSideEstimatorListener
+	localIce             *sdp.ICEInfo
+	localDtls            *sdp.DTLSInfo
+	localCandidates      []*sdp.CandidateInfo
+	remoteIce            *sdp.ICEInfo
+	remoteDtls           *sdp.DTLSInfo
+	remoteCandidates     []*sdp.CandidateInfo
+	bundle               native.RTPBundleTransport
+	transport            native.DTLSICETransport
+	username             native.StringFacade
+	incomingStreams      map[string]*IncomingStream
+	outgoingStreams      map[string]*OutgoingStream
+	senderSideListener   senderSideEstimatorListener
+	onIncomingtrackFuncs []IncomingtrackFunc
+	onOutgoingtrackFuncs []OutgoingtrackFunc
 	*emission.Emitter
 }
 
@@ -107,7 +112,8 @@ func NewTransport(bundle native.RTPBundleTransport, remoteIce *sdp.ICEInfo, remo
 
 	transport.incomingStreams = make(map[string]*IncomingStream)
 	transport.outgoingStreams = make(map[string]*OutgoingStream)
-
+	transport.onIncomingtrackFuncs = make([]IncomingtrackFunc, 0)
+	transport.onOutgoingtrackFuncs = make([]OutgoingtrackFunc, 0)
 	return transport
 }
 

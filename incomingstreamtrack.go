@@ -1,6 +1,7 @@
 package mediaserver
 
 import (
+	"context"
 	"sort"
 	"strconv"
 	"time"
@@ -59,6 +60,8 @@ type IncomingStreamTrack struct {
 	encodings map[string]*Encoding
 	trackInfo *sdp.TrackInfo
 	stats     map[string]*IncomingAllStats
+	ctx       context.Context
+	cancel    context.CancelFunc
 	*emission.Emitter
 }
 
@@ -224,8 +227,11 @@ func newIncomingStreamTrack(media string, id string, receiver native.RTPReceiver
 			}
 			track.trackInfo.AddEncoding(encodingInfo)
 		}
-
 	}
+
+	ctx, cancel := context.WithCancel(context.TODO())
+	track.ctx = ctx
+	track.cancel = cancel
 
 	return track
 }
@@ -459,7 +465,8 @@ func (i *IncomingStreamTrack) Stop() {
 
 	i.EmitSync("stopped")
 
-	i.encodings = nil
+	i.cancel()
 
+	i.encodings = nil
 	i.receiver = nil
 }
